@@ -1,0 +1,31 @@
+import sys
+import os
+from google.cloud import storage
+# conda install -c conda-forge google-cloud-storage
+# Clean arguments from Rundeck
+KEY_PATH = sys.argv[1].replace('"', '').replace("'", "")
+BUCKET_NAME = sys.argv[2].replace('"', '').replace("'", "")
+BLOB_NAME = sys.argv[3].replace('"', '').replace("'", "")
+DEST_PATH = sys.argv[4].replace('"', '').replace("'", "")
+
+def download_blob():
+    try:
+        # Authenticate using the Service Account Key file
+        storage_client = storage.Client.from_service_account_json(KEY_PATH)
+        
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(BLOB_NAME)
+
+        # Download the file
+        blob.download_to_filename(DEST_PATH)
+        print(f"Successfully downloaded {BLOB_NAME} to {DEST_PATH}")
+
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        print("Usage: python download_gcs.py <key_path> <bucket> <blob> <dest>")
+        sys.exit(1)
+    download_blob()
