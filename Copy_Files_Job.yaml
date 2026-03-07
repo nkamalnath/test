@@ -1,0 +1,33 @@
+- defaultTab: nodes
+  description: ''
+  executionEnabled: true
+  id: 44fde442-8394-4f72-9c85-db2af2ff7eab
+  loglevel: INFO
+  name: Copy Files Job
+  nodeFilterEditable: false
+  options:
+  - label: Destination Folder Path
+    name: dest_path
+    required: true
+    value: C:\Users\nkama\source\repos\Cursor_Ex\Destination
+  - label: Source Folder Path
+    name: source_path
+    required: true
+    value: C:\Users\nkama\source\repos\Cursor_Ex\Source
+  plugins:
+    ExecutionLifecycle: {}
+  scheduleEnabled: true
+  sequence:
+    commands:
+    - args: '"${option.source_path}" "${option.dest_path}"'
+      autoSecureInput: 'false'
+      fileExtension: .py
+      interpreterArgsQuoted: false
+      passSecureInput: 'false'
+      scriptInterpreter: '"C:\Users\nkama\.conda\envs\automation_env_py313\python.exe"
+        -u'
+      scriptfile: C:\Projects\Python\Copy_Files.py
+    keepgoing: false
+    strategy: node-first
+  user: admin
+  uuid: 44fde442-8394-4f72-9c85-db2af2ff7eab
