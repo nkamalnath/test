@@ -1,0 +1,42 @@
+As part of the Rundeck POC, I have evaluated both PowerShell and Python for our automated file operations. 
+Below is a breakdown of my findings regarding their performance, deployment complexity, and long-term viability.
+
+PowerShell Script Approach
+
+Advantages
+
+Native Integration: Fully built into the Windows ecosystem with no separate runtime dependencies.
+
+Lean Deployment: Production deployment is exceptionally simple, typically requiring only the migration of script files via deployment pipelines.
+
+Low Maintenance: Long-term support effort is minimal as the environment is managed by the OS.
+
+Native to Windows
+No additional runtime dependencies required
+Simpler production deployment (typically just script files)
+Lower long-term maintenance overhead
+
+Challenges
+
+Scalability: Logic can become difficult to manage if scripts grow excessively large or complex.
+Requires coding standards and testing discipline to prevent script sprawl
+
+Python Script Approach
+
+Advantages
+
+Advanced Logic:Better suited for complex logic, reusable modules, API integrations, data parsing, validation, and reporting
+
+Structural Integrity: Easier to organize into reusable modules for large-scale automation solutions.
+
+Extensibility: A stronger foundation if our workflows expand beyond simple file movement into data processing.
+
+Challenges
+
+Deployment Complexity: The pipeline is significantly more involved, requiring the deployment of both the script and the underlying environment.
+
+Operational Overhead: Requires a managed Python/Anaconda runtime and constant package management on production server.
+
+Security Liability: We assume full responsibility for patching and managing security vulnerabilities within third-party Python packages.
+
+Support Effort: More "moving parts" in production leads to a higher long-term support burden compared to native tools.
