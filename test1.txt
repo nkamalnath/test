@@ -1,0 +1,75 @@
+Good move asking this upfront—Kentico migrations can look simple on the surface but get complex fast depending on customizations and integrations. Since you’re new, your goal is to quickly understand what exists today vs. what SaaS Kentico supports out of the box.
+
+Here’s a practical set of questions you can use in your internal meeting, grouped by area:
+
+1. Current Kentico Setup (Baseline Understanding)
+Which version of Kentico are we currently using (Xperience 12, 13, etc.)?
+Is it MVC, Portal Engine, or a hybrid implementation?
+How is the site hosted today (on-prem, Azure, AWS)?
+How many environments do we maintain (Dev, QA, Prod)?
+2. Content & Structure
+How is content structured (pages, content types, reusable components)?
+Approximate volume of content (pages, media assets, documents)?
+Are there multilingual or multi-site setups?
+How often is content updated and by whom?
+3. Customizations (Critical for SaaS Migration)
+What custom widgets, modules, or components do we currently use?
+Any custom business logic embedded in the site?
+Are there custom workflows or approval processes?
+What parts of the site are heavily customized vs. out-of-the-box?
+
+👉 This is one of the biggest risk areas—SaaS platforms usually limit deep customization.
+
+4. Integrations
+What external systems are integrated?
+CRM (e.g., Salesforce)
+Marketing tools
+APIs / internal services
+Are integrations synchronous or batch-based?
+Any dependency on file transfers (FTP/SFTP)?
+5. Features in Use
+Are we using:
+Personalization?
+Marketing automation?
+Email campaigns?
+Forms / data collection?
+E-commerce features?
+
+👉 Not all features map directly to SaaS the same way.
+
+6. Authentication & Security
+How is authentication handled (SSO, Azure AD, custom)?
+Any role-based access or restricted content?
+Compliance requirements (GDPR, etc.)?
+7. Media & Assets
+Where are media files stored today?
+Size and volume of assets?
+Any CDN in use?
+8. Deployment & Dev Process
+How are deployments handled today?
+Any CI/CD pipelines?
+How are content and code promoted across environments?
+9. Performance & Traffic
+Current traffic levels and peak loads?
+Any performance issues today?
+SEO considerations (URLs, redirects, metadata)?
+10. Migration Scope & Strategy
+Are we aiming for:
+Lift-and-shift?
+Partial redesign?
+Full rebuild?
+What is the expected timeline?
+Any hard deadlines?
+11. Risks & Constraints
+What are known pain points in the current system?
+What must NOT break during migration?
+Any licensing or budget constraints?
+12. SaaS-Specific Questions
+What limitations does Kentico SaaS have compared to current setup?
+How does SaaS handle:
+Custom code?
+Integrations?
+Content migration?
+What tooling is available for migration?
+
+1. The Architecture & Customization QuestionsThe SaaS platform is a "black box" regarding the server environment. You cannot install custom software on the server or run direct SQL queries against the database."Do we have any custom 'Scheduled Tasks' or 'Custom Modules' that rely on local server file access or external Windows services?"Why: These will need to be rewritten as cloud-native integrations or worker services."Are there any external applications or reporting tools that run direct SQL queries against our current Kentico database?"Why: In SaaS, direct database access is forbidden. All data must be pulled via APIs or the Kentico Integration Service."Is our current site built using 'Portal Engine' (legacy) or 'ASP.NET Core'?"Why: If it’s Portal Engine, the frontend must be 100% rebuilt. If it’s already ASP.NET Core (from Kentico 13), some code can be salvaged, but it still requires significant updates.2. Content & Digital Asset QuestionsThe SaaS version uses a Content Hub (a headless-style repository) rather than just a traditional page tree."How much 'unstructured' content do we have buried in static HTML widgets versus structured Page Types?"Why: Unstructured content is difficult to migrate automatically and usually requires a manual "copy-paste" effort."Do we have a significant amount of media (PDFs, high-res videos) that requires specific CDN or transformation logic?"Why: Kentico SaaS includes a built-in CDN (Cloudflare), so you need to know if your current media handling conflicts with a managed environment.3. Integration & Security QuestionsIn a SaaS environment, security is managed for you, but it also means you have less "fine-grained" control over the network."What third-party integrations (CRM, ERP, Payment Gateways) are critical, and do they use modern REST APIs or legacy SOAP/File-transfer methods?"Why: SaaS favors modern APIs. Legacy integrations may require a middleware layer (like Azure Functions) to talk to the new platform."How do we currently handle Single Sign-On (SSO) for our employees/editors?"Why: You'll need to confirm compatibility with the SaaS platform’s authentication providers (typically OpenID Connect or SAML).4. Marketing & Commercial QuestionsThe feature set in Xperience by Kentico (SaaS) is "evergreen," but some legacy features have been deprecated or replaced."Are we using the native Kentico E-commerce module, and if so, how much custom checkout logic do we have?"Why: The commerce engine in the new platform is entirely different. This is often the most expensive part of a migration."Which 'Online Marketing' features are we actually using (e.g., A/B testing, Marketing Automation, Personas)?"Why: This helps prioritize which features to set up first in the new "Digital Experience" (DX) suite.Meeting Cheat Sheet: Red Flags to Watch ForIf your team gives these answers, the migration will be complex (and likely more expensive):Team AnswerImpact LevelMeaning"We have a lot of custom SQL tables."HighRequires a total data-access redesign."We are on Kentico 12 Portal Engine."CriticalThis is a "rebuild," not an "upgrade.""We have many legacy SOAP integrations."MediumYou'll likely need to build a "bridge" API."Our site is mostly static HTML pages."LowEasy to migrate, but won't leverage the SaaS power.Pro Tip: Ask your developers to run the Universal Migration Toolkit (available on GitHub) against a copy of your current database. It will generate a report showing exactly which data types will move easily and which will fail—giving you a data-driven "difficulty score" for the project.Do you know which version of Kentico you are currently running?
