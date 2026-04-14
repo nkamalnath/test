@@ -1,0 +1,15 @@
+Navigate to R:\test\archive and select any file larger than 1 KB.
+Note the date in the file name.
+Open the file in any editor and count the number of bundle objects by counting occurrences of "integration".
+Move the file to the parent (R:\test) directory.
+Wait for the file watcher to process the file.
+Verify that success.log is updated with a “successfully ingested” message.
+Connect to the database and execute the query below.
+Confirm that the record count matches the bundle object count from Step 1.
+Using Insomnia, send a POST request with the payload below.
+This will place the previous day’s file into R:\test and trigger immediate processing.
+If the file contains data, records should be inserted into the database.
+Re-run the query (update the date filter to the previous day) to validate.
+Validate logs for both scenarios:
+File contains data
+File contains no data
