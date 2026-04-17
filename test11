@@ -13,3 +13,9 @@ Re-run the query (update the date filter to the previous day) to validate.
 Validate logs for both scenarios:
 File contains data
 File contains no data
+
+Yes, this workflow is definitely feasible as a POC using the Rundeck Community version. While the free version lacks some out-of-the-box Enterprise plugins, we can achieve the same results through custom scripting (such as Python or PowerShell) within the job steps.
+
+Starting with a POC in the Community version is a good approach to identify any specific technical challenges—such as handling the API authentication or managing the file hand-offs—without an initial investment.
+
+I’m happy to start building out the initial steps next week please let me know.
