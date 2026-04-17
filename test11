@@ -19,3 +19,16 @@ Yes, this workflow is definitely feasible as a POC using the Rundeck Community v
 Starting with a POC in the Community version is a good approach to identify any specific technical challenges—such as handling the API authentication or managing the file hand-offs—without an initial investment.
 
 I’m happy to start building out the initial steps next week please let me know.
+
+
+Subject: Request for Certificate for DealCloud Backup Encryption
+
+Hi IT Team,
+
+I’m working on setting up DealCloud backup encryption for our environment. As part of the configuration, DealCloud requires a valid certificate (e.g., .pfx or .cer) issued by our organization to enable encrypted backups.
+
+Could you please assist in providing a certificate that can be used for this purpose, or guide me through the internal process to request one?
+
+This certificate will be used specifically for encrypting and securing DealCloud backup data.
+
+Let me know if any additional details are needed from my side.
