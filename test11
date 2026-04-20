@@ -15,10 +15,3 @@ File contains data
 File contains no data
 
 
-After testing the kentico migration guide, i found it migrates content effectively, 
-but the substantial work involves manually reconstructing our current custom code and front-end components. 
-During my attempt to migrate a page component, I hit roadblocks due to my unfamiliarity 
-with our existing site architecture and Kentico. 
-While the initial code migration setup will be time-consuming to establish, 
-I belive we can manage the remaining migration smoothly once that foundation is established.
-Freddy may have a clearer picture once he tries out the code migration.
