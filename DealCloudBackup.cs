@@ -50,11 +50,6 @@ static string EnvOr(string name, string fallback)
 static void Log(string level, string msg)
     => Console.WriteLine($"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} [{level}] {msg}");
 
-var jsonOpts = new JsonSerializerOptions
-{
-    PropertyNameCaseInsensitive = true, // tolerate Name/name, Link/link, etc.
-};
-
 try
 {
     // ---- Config from environment (Rundeck injects these from Key Storage) ----
@@ -94,7 +89,7 @@ try
         return 3;
     }
 
-    var tokenPayload = JsonSerializer.Deserialize<TokenResponse>(tokenBody, jsonOpts);
+    var tokenPayload = JsonSerializer.Deserialize(tokenBody, AppJsonContext.Default.TokenResponse);
     if (tokenPayload is null || string.IsNullOrWhiteSpace(tokenPayload.AccessToken))
     {
         Log("ERROR", "Token response did not contain access_token.");
@@ -132,7 +127,7 @@ try
     BackupResponse? parsed;
     try
     {
-        parsed = JsonSerializer.Deserialize<BackupResponse>(backupBody, jsonOpts);
+        parsed = JsonSerializer.Deserialize(backupBody, AppJsonContext.Default.BackupResponse);
     }
     catch (JsonException jx)
     {
@@ -244,3 +239,16 @@ public sealed record BackupResponse(
     int?               StatusCode,
     string?            Message
 );
+
+// Source-generator context. This replaces runtime reflection with code
+// emitted at compile time, which is required when reflection-based
+// serialization is disabled (the default for .NET 10 file-based apps,
+// trimmed builds, and Native AOT). Add new [JsonSerializable(typeof(...))]
+// lines here for any additional types you deserialize.
+[JsonSourceGenerationOptions(PropertyNameCaseInsensitive = true)]
+[JsonSerializable(typeof(TokenResponse))]
+[JsonSerializable(typeof(BackupResponse))]
+[JsonSerializable(typeof(BackupEntry))]
+public partial class AppJsonContext : JsonSerializerContext
+{
+}
