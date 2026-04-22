@@ -4,8 +4,9 @@
 //
 // Flow:
 //   1. POST to DealCloud OAuth token endpoint (client_credentials) -> access_token
-//   2. GET the backup endpoint with Bearer token -> JSON containing a download URL
-//   3. GET the download URL (usually a pre-signed blob link) and stream to disk
+//   2. GET the backup endpoint with Bearer token -> JSON listing backups
+//      Pick the entry whose filename contains the target date (default: yesterday UTC)
+//   3. GET the pre-signed download URL and stream the file to disk
 //
 // Designed to run as a Rundeck job step. All configuration comes from
 // environment variables so Rundeck Key Storage values can be injected via
@@ -17,16 +18,19 @@
 //   2  missing required env var
 //   3  token request failed
 //   4  backup metadata request failed
-//   5  download URL not found in backup response
+//   5  no backup matched the target date (previous day by default)
 //   6  download request failed
 //   7  downloaded file is empty
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 static string RequireEnv(string name)
@@ -45,6 +49,11 @@ static string EnvOr(string name, string fallback)
 
 static void Log(string level, string msg)
     => Console.WriteLine($"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} [{level}] {msg}");
+
+var jsonOpts = new JsonSerializerOptions
+{
+    PropertyNameCaseInsensitive = true, // tolerate Name/name, Link/link, etc.
+};
 
 try
 {
@@ -85,20 +94,17 @@ try
         return 3;
     }
 
-    string accessToken;
-    using (var doc = JsonDocument.Parse(tokenBody))
+    var tokenPayload = JsonSerializer.Deserialize<TokenResponse>(tokenBody, jsonOpts);
+    if (tokenPayload is null || string.IsNullOrWhiteSpace(tokenPayload.AccessToken))
     {
-        if (!doc.RootElement.TryGetProperty("access_token", out var atEl) || atEl.ValueKind != JsonValueKind.String)
-        {
-            Log("ERROR", "Token response did not contain access_token.");
-            Log("ERROR", tokenBody);
-            return 3;
-        }
-        accessToken = atEl.GetString()!;
+        Log("ERROR", "Token response did not contain access_token.");
+        Log("ERROR", tokenBody);
+        return 3;
     }
+    var accessToken = tokenPayload.AccessToken!;
     Log("INFO", "Access token acquired.");
 
-    // ---- Step 2: call backup endpoint to get the download link ----
+    // ---- Step 2: call backup endpoint and pick the entry for the target date ----
     Log("INFO", $"Calling backup endpoint {siteUrl}{backupPath} ...");
     using var backupReq = new HttpRequestMessage(HttpMethod.Get, siteUrl + backupPath);
     backupReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -113,49 +119,73 @@ try
         return 4;
     }
 
-    // DealCloud may return either a JSON object with a link field, or a plain string URL.
-    string? downloadUrl = null;
-    var trimmed = backupBody.TrimStart();
-    if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
+    // Target date defaults to yesterday (UTC); override with DEALCLOUD_BACKUP_DATE=YYYYMMDD.
+    var targetDate = EnvOr("DEALCLOUD_BACKUP_DATE",
+                           DateTime.UtcNow.AddDays(-1).ToString("yyyyMMdd"));
+    if (!Regex.IsMatch(targetDate, @"^\d{8}$"))
     {
-        using var doc = JsonDocument.Parse(backupBody);
-        var root = doc.RootElement.ValueKind == JsonValueKind.Array && doc.RootElement.GetArrayLength() > 0
-            ? doc.RootElement[0]
-            : doc.RootElement;
-
-        foreach (var name in new[] { "downloadUrl", "downloadLink", "url", "link", "uri", "backupUrl", "location" })
-        {
-            if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String)
-            {
-                downloadUrl = el.GetString();
-                break;
-            }
-        }
+        Log("ERROR", $"DEALCLOUD_BACKUP_DATE must be YYYYMMDD, got: {targetDate}");
+        return 5;
     }
-    else
+    Log("INFO", $"Looking for backup dated {targetDate} ...");
+
+    BackupResponse? parsed;
+    try
     {
-        // Bare string/quoted URL fallback
-        downloadUrl = backupBody.Trim().Trim('"');
+        parsed = JsonSerializer.Deserialize<BackupResponse>(backupBody, jsonOpts);
+    }
+    catch (JsonException jx)
+    {
+        Log("ERROR", $"Backup response was not valid JSON: {jx.Message}");
+        Log("ERROR", backupBody);
+        return 4;
     }
 
-    if (string.IsNullOrWhiteSpace(downloadUrl) ||
-        !Uri.TryCreate(downloadUrl, UriKind.Absolute, out _))
+    if (parsed?.Model is null || parsed.Model.Count == 0)
     {
-        Log("ERROR", "Could not extract a valid download URL from backup response:");
+        Log("ERROR", "Backup response had no 'model' array or it was empty.");
         Log("ERROR", backupBody);
         return 5;
     }
-    Log("INFO", "Download URL received.");
 
-    // ---- Step 3: download the backup file ----
-    var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-    var outputPath = Path.Combine(outputDir, $"dealcloud-backup-{timestamp}.zip");
+    // Match the 8-digit date inside filenames like Test_Site_DataExport_20250507_1.zip
+    var dateInName = new Regex(@"_(\d{8})_", RegexOptions.Compiled);
+
+    var match = parsed.Model.FirstOrDefault(e =>
+        !string.IsNullOrEmpty(e.Name) &&
+        dateInName.Match(e.Name) is { Success: true } m &&
+        m.Groups[1].Value == targetDate);
+
+    if (match is null ||
+        string.IsNullOrWhiteSpace(match.Name) ||
+        string.IsNullOrWhiteSpace(match.Link))
+    {
+        Log("ERROR", $"No backup file found for date {targetDate}.");
+        Log("ERROR", "Available files:");
+        foreach (var n in parsed.Model.Select(e => e.Name).Where(n => !string.IsNullOrEmpty(n)))
+            Log("ERROR", "  - " + n);
+        return 5;
+    }
+
+    if (!Uri.TryCreate(match.Link, UriKind.Absolute, out var downloadUri))
+    {
+        Log("ERROR", $"Matched entry '{match.Name}' but its link is not a valid absolute URL.");
+        return 5;
+    }
+
+    var fileName    = match.Name!;
+    var downloadUrl = match.Link!;
+    Log("INFO", $"Matched backup: {fileName}");
+
+    // ---- Step 3: download the backup file, preserving its original name ----
+    var safeName   = Path.GetFileName(fileName); // guard against path traversal
+    var outputPath = Path.Combine(outputDir, safeName);
 
     Log("INFO", $"Downloading backup -> {outputPath}");
     using var dlReq = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
     // Pre-signed blob URLs typically do NOT want the Bearer token. Only attach
     // it if the link points back to the DealCloud site host.
-    if (new Uri(downloadUrl!).Host.Equals(new Uri(siteUrl).Host, StringComparison.OrdinalIgnoreCase))
+    if (downloadUri.Host.Equals(new Uri(siteUrl).Host, StringComparison.OrdinalIgnoreCase))
     {
         dlReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     }
@@ -167,15 +197,6 @@ try
         var errBody = await dlResp.Content.ReadAsStringAsync();
         if (!string.IsNullOrWhiteSpace(errBody)) Log("ERROR", errBody);
         return 6;
-    }
-
-    // Honor server-supplied filename if present
-    var cd = dlResp.Content.Headers.ContentDisposition;
-    var suggested = cd?.FileNameStar ?? cd?.FileName;
-    if (!string.IsNullOrWhiteSpace(suggested))
-    {
-        var cleaned = suggested.Trim('"');
-        outputPath = Path.Combine(outputDir, $"{timestamp}-{cleaned}");
     }
 
     await using (var inStream  = await dlResp.Content.ReadAsStreamAsync())
@@ -202,3 +223,24 @@ catch (Exception ex)
     Log("ERROR", $"Unhandled exception: {ex}");
     return 1;
 }
+
+// ---------- DTOs ----------
+// Records live after top-level statements in a file-based C# program.
+
+public sealed record TokenResponse(
+    [property: JsonPropertyName("access_token")] string? AccessToken,
+    [property: JsonPropertyName("token_type")]   string? TokenType,
+    [property: JsonPropertyName("expires_in")]   int?    ExpiresIn,
+    [property: JsonPropertyName("scope")]        string? Scope
+);
+
+public sealed record BackupEntry(
+    string? Name,
+    string? Link
+);
+
+public sealed record BackupResponse(
+    List<BackupEntry>? Model,
+    int?               StatusCode,
+    string?            Message
+);
