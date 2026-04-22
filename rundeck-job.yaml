@@ -1,0 +1,88 @@
+- name: DealCloud - Download Previous Day Backup
+  description: |
+    Downloads the previous day's DealCloud site backup using a .NET 10 script.
+    Credentials are injected from Rundeck Key Storage as environment variables.
+  loglevel: INFO
+  scheduleEnabled: true
+  executionEnabled: true
+
+  schedule:
+    month: '*'
+    weekday:
+      day: '*'
+    time:
+      hour: '6'
+      minute: '0'
+      seconds: '0'
+    year: '*'
+
+  # ── Job options – wired to Key Storage for secrets ──────────────────────────
+  options:
+    - name: DC_BASE_URL
+      label: DealCloud Base URL
+      description: "e.g. https://your-site.dealcloud.com"
+      required: true
+      exposed: true
+
+    - name: DC_CLIENT_ID
+      label: Client ID
+      required: true
+      exposed: true
+
+    - name: DC_CLIENT_SECRET
+      label: Client Secret
+      required: true
+      secure: true
+      valueExposed: true
+      storageKey: keys/dealcloud/client_secret   # adjust to your Key Storage path
+
+    - name: DC_USERNAME
+      label: Username
+      required: true
+      exposed: true
+
+    - name: DC_PASSWORD
+      label: Password
+      required: true
+      secure: true
+      valueExposed: true
+      storageKey: keys/dealcloud/password        # adjust to your Key Storage path
+
+    - name: DC_OUTPUT_DIR
+      label: Output Directory
+      description: Where to save the downloaded .zip
+      value: /opt/dealcloud-backups
+      required: true
+      exposed: true
+
+  # ── Workflow ─────────────────────────────────────────────────────────────────
+  sequence:
+    keepgoing: false
+    strategy: node-first
+    commands:
+
+      - type: script
+        description: Download previous day DealCloud backup
+        # Upload Program.cs to Rundeck as a script file, or paste inline.
+        # Rundeck copies the script to a temp dir on the node and executes it.
+        scriptfile: /opt/dealcloud-backup/Program.cs   # path on the Rundeck server
+        args: ""
+        # All DC_* vars are passed as environment variables so the script
+        # never reads a config file – fully portable across nodes.
+        envVarConfig:
+          - envVarName: DC_BASE_URL
+            optionName: DC_BASE_URL
+          - envVarName: DC_CLIENT_ID
+            optionName: DC_CLIENT_ID
+          - envVarName: DC_CLIENT_SECRET
+            optionName: DC_CLIENT_SECRET
+          - envVarName: DC_USERNAME
+            optionName: DC_USERNAME
+          - envVarName: DC_PASSWORD
+            optionName: DC_PASSWORD
+          - envVarName: DC_OUTPUT_DIR
+            optionName: DC_OUTPUT_DIR
+
+        # Interpreter tells Rundeck how to run the script file
+        fileExtension: .cs
+        interpreter: "dotnet run"
