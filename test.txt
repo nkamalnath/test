@@ -104,3 +104,13 @@ LEFT JOIN CMS_ContentItem targetItem
     ON cir.ContentItemReferenceTargetItemID = targetItem.ContentItemID
 WHERE ci.ContentItemName = 'YourPageName'
 ORDER BY cicd.ContentItemCommonDataIsLatest DESC;
+
+------------------
+
+SELECT CI.ContentItemName,
+       CD.ContentItemCommonDataVisualBuilderWidgets,
+       CD.ContentItemCommonDataVisualBuilderTemplateConfiguration
+FROM   CMS_ContentItemCommonData CD
+INNER JOIN CMS_ContentItem CI 
+       ON CI.ContentItemID = CD.ContentItemCommonDataContentItemID
+WHERE  CI.ContentItemName = 'YourPageName'
