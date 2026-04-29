@@ -114,3 +114,25 @@ FROM   CMS_ContentItemCommonData CD
 INNER JOIN CMS_ContentItem CI 
        ON CI.ContentItemID = CD.ContentItemCommonDataContentItemID
 WHERE  CI.ContentItemName = 'YourPageName'
+
+-------------------
+
+# 1. Define File Paths
+$pfxPath = "C:\Certs\MyCertificate.pfx"
+$crtPath = "C:\Certs\MyCertificate.crt"
+
+# 2. Extract PFX (Private + Public)
+$pfxBase64 = $OctopusParameters["MyCert.Pfx"]
+if ($pfxBase64) {
+    $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
+    [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+    Write-Host "Exported PFX to $pfxPath"
+}
+
+# 3. Extract CRT (Public Only)
+$crtBase64 = $OctopusParameters["MyCert.Certificate"]
+if ($crtBase64) {
+    $crtBytes = [System.Convert]::FromBase64String($crtBase64)
+    [System.IO.File]::WriteAllBytes($crtPath, $crtBytes)
+    Write-Host "Exported CRT to $crtPath"
+}
