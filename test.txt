@@ -40,3 +40,46 @@ Operational Overhead: Requires a managed Python/Anaconda runtime and constant pa
 Security Liability: We assume full responsibility for patching and managing security vulnerabilities within third-party Python packages.
 
 Support Effort: More "moving parts" in production leads to a higher long-term support burden compared to native tools.
+
+public async Task<IActionResult> Diagnose()
+{
+    var sb = new StringBuilder();
+    
+    // Test 1: Direct query, no channel filter, max depth
+    var builder = new ContentItemQueryBuilder()
+        .ForContentType("YourNamespace.HomePage", c => c
+            .WithLinkedItems(5));
+    
+    var results = await _contentQueryExecutor
+        .GetMappedWebPageResult<HomePage>(builder);
+    
+    sb.AppendLine($"=== Direct Query (no channel filter) ===");
+    sb.AppendLine($"Pages found: {results.Count()}");
+    
+    foreach (var p in results)
+    {
+        sb.AppendLine($"  Path: {p.SystemFields.WebPageItemTreePath}");
+        sb.AppendLine($"  BannerImage null? {p.BannerImage == null}");
+        sb.AppendLine($"  BannerImage count: {p.BannerImage?.Count() ?? 0}");
+        
+        if (p.BannerImage != null && p.BannerImage.Any())
+        {
+            foreach (var item in p.BannerImage)
+                sb.AppendLine($"    Linked type: {item.GetType().FullName}");
+        }
+    }
+    
+    // Test 2: Via IContentRetriever
+    var retrieved = await _contentRetriever.RetrievePages<HomePage>(
+        new RetrievePagesParameters { LinkedItemsMaxLevel = 5 });
+    
+    sb.AppendLine($"\n=== Via IContentRetriever ===");
+    sb.AppendLine($"Pages found: {retrieved.Count()}");
+    foreach (var p in retrieved)
+    {
+        sb.AppendLine($"  Path: {p.SystemFields.WebPageItemTreePath}");
+        sb.AppendLine($"  BannerImage count: {p.BannerImage?.Count() ?? 0}");
+    }
+    
+    return Content(sb.ToString());
+}
