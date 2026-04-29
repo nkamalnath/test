@@ -136,3 +136,28 @@ if ($crtBase64) {
     [System.IO.File]::WriteAllBytes($crtPath, $crtBytes)
     Write-Host "Exported CRT to $crtPath"
 }
+
+--------------------
+
+# --- Inputs ---
+$certVarName = "MyCertificate"        # name of your Octopus certificate variable
+$outputDir   = "E:\Cert"
+$pfxFile     = Join-Path $outputDir "mycert.pfx"
+$keyFile     = Join-Path $outputDir "mycert.key"
+
+if (-not (Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+# --- 1. Write the .pfx ---
+# The .Pfx sub-variable is the raw PFX bytes, base64-encoded.
+# It already contains the private key inside.
+$pfxBase64 = $OctopusParameters["$certVarName.Pfx"]
+$pfxBytes  = [Convert]::FromBase64String($pfxBase64)
+[System.IO.File]::WriteAllBytes($pfxFile, $pfxBytes)
+Write-Host "Wrote PFX -> $pfxFile"
+
+# --- 2. Write the private key as PEM ---
+$keyPem = $OctopusParameters["$certVarName.PrivateKeyPem"]
+Set-Content -Path $keyFile -Value $keyPem -Encoding ASCII -NoNewline
+Write-Host "Wrote private key -> $keyFile"
