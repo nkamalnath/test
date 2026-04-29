@@ -83,3 +83,24 @@ public async Task<IActionResult> Diagnose()
     
     return Content(sb.ToString());
 }
+
+
+-- Pick any page that should have BannerImage populated
+-- Replace 'YourPageName' with the actual ContentItemName
+
+SELECT TOP 20
+    ci.ContentItemName AS SourcePage,
+    cicd.ContentItemCommonDataIsLatest,
+    cicd.ContentItemCommonDataVersionStatus,
+    cir.ContentItemReferenceTargetItemID,
+    targetItem.ContentItemName AS LinkedItem,
+    cir.ContentItemReferenceGroupGUID
+FROM CMS_ContentItem ci
+JOIN CMS_ContentItemCommonData cicd 
+    ON ci.ContentItemID = cicd.ContentItemCommonDataContentItemID
+LEFT JOIN CMS_ContentItemReference cir 
+    ON cir.ContentItemReferenceSourceCommonDataID = cicd.ContentItemCommonDataID
+LEFT JOIN CMS_ContentItem targetItem 
+    ON cir.ContentItemReferenceTargetItemID = targetItem.ContentItemID
+WHERE ci.ContentItemName = 'YourPageName'
+ORDER BY cicd.ContentItemCommonDataIsLatest DESC;
