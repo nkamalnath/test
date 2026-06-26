@@ -1,43 +1,19 @@
-As part of the Rundeck POC, I have evaluated both PowerShell and Python for our automated file operations. 
-Below is a breakdown of my findings regarding their performance, deployment complexity, and long-term viability.
+1. CI/CD Pipeline Configuration & Code Refactoring
 
-PowerShell Script Approach
+Configured and established CI/CD pipelines for two key projects — Order Fetcher and Dow Jones — ensuring both align with tour standard SDLC practices. This effort improved deployment consistency, reduced manual effort, and laid a stronger foundation for ongoing development and maintainability across both projects.
 
-Advantages
+2. Equity Derivatives Process Support
 
-Native Integration: Fully built into the Windows ecosystem with no separate runtime dependencies.
+Provided hands-on support to business users in diagnosing and resolving issues within the existing Equity Derivatives process, originally developed by a former business user. Took ownership of understanding an undocumented system and delivered timely fixes, minimizing disruption to business operations and demonstrating adaptability in working with legacy solutions.
 
-Lean Deployment: Production deployment is exceptionally simple, typically requiring only the migration of script files via deployment pipelines.
+3. GI Independence – GCIS Application Adoption
 
-Low Maintenance: Long-term support effort is minimal as the environment is managed by the OS.
+Contributed to the GI Independence initiative by helping adapt the GCIS application to support the GI separation. This involved enabling the application to handle separate firm holding files, ensuring a clean and accurate separation of data between entities in alignment with the broader organizational restructuring effort.
 
-Native to Windows
-No additional runtime dependencies required
-Simpler production deployment (typically just script files)
-Lower long-term maintenance overhead
+4. Ecom Monitoring Enhancements
 
-Challenges
+Extended the Ecom monitoring capabilities by integrating a new data source for GS Teams and GS Email. This enhancement improves visibility and coverage, allowing better tracking and faster response to issues across communication channels used by the GS team.
 
-Scalability: Logic can become difficult to manage if scripts grow excessively large or complex.
-Requires coding standards and testing discipline to prevent script sprawl
+5. Public Website Migration Assessment
 
-Python Script Approach
-
-Advantages
-
-Advanced Logic:Better suited for complex logic, reusable modules, API integrations, data parsing, validation, and reporting
-
-Structural Integrity: Easier to organize into reusable modules for large-scale automation solutions.
-
-Extensibility: A stronger foundation if our workflows expand beyond simple file movement into data processing.
-
-Challenges
-
-Deployment Complexity: The pipeline is significantly more involved, requiring the deployment of both the script and the underlying environment.
-
-Operational Overhead: Requires a managed Python/Anaconda runtime and constant package management on production server.
-
-Security Liability: We assume full responsibility for patching and managing security vulnerabilities within third-party Python packages.
-
-Support Effort: More "moving parts" in production leads to a higher long-term support burden compared to native tools.
-
+Participated in the assessment phase of the GS public website migration, contributing technical evaluation and insights to support informed decision-making for the migration effort.
