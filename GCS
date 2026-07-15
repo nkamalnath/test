@@ -1,0 +1,183 @@
+using Google.Cloud.Storage.V1;
+using Google.Apis.Storage.v1.Data;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
+public class GcsVersionFetcher
+{
+    public static async Task<string> GetLatestVersionFolderAsync(
+        StorageClient storageClient, string bucketName, string parentPrefix = "")
+    {
+        var options = new ListObjectsOptions { Delimiter = "/" };
+
+        var pages = storageClient
+            .ListObjects(bucketName, parentPrefix, options)
+            .AsRawResponses();
+
+        var versionFolders = new List<(int Version, string Prefix)>();
+
+        foreach (Objects page in pages)
+        {
+            if (page.Prefixes == null) continue;
+
+            foreach (var prefix in page.Prefixes)
+            {
+                // prefix looks like "releases/v12/"
+                var name = prefix.TrimEnd('/').Split('/')[^1]; // "v12"
+                if (name.StartsWith("v") && int.TryParse(name[1..], out int num))
+                {
+                    versionFolders.Add((num, prefix));
+                }
+            }
+        }
+
+        if (versionFolders.Count == 0)
+            throw new InvalidOperationException($"No version folders found under '{parentPrefix}'");
+
+        var latest = versionFolders.OrderByDescending(v => v.Version).First();
+        return latest.Prefix; // e.g. "releases/v12/"
+    }
+
+    public static async Task<List<Google.Apis.Storage.v1.Data.Object>> GetFilesInFolderAsync(
+        StorageClient storageClient, string bucketName, string folderPrefix)
+    {
+        var files = new List<Google.Apis.Storage.v1.Data.Object>();
+
+        await foreach (var obj in storageClient.ListObjectsAsync(bucketName, folderPrefix))
+        {
+            // Skip the "folder placeholder" object itself, if one exists
+            if (obj.Name == folderPrefix) continue;
+            files.Add(obj);
+        }
+
+        return files;
+    }
+
+    public static async Task DownloadFolderAsync(
+        StorageClient storageClient, string bucketName, string folderPrefix, string localDir)
+    {
+        Directory.CreateDirectory(localDir);
+
+        var files = await GetFilesInFolderAsync(storageClient, bucketName, folderPrefix);
+
+        foreach (var file in files)
+        {
+            var relativeName = file.Name[folderPrefix.Length..]; // strip the prefix
+            var localPath = Path.Combine(localDir, relativeName);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
+
+            using var stream = File.OpenWrite(localPath);
+            await storageClient.DownloadObjectAsync(bucketName, file.Name, stream);
+
+            Console.WriteLine($"Downloaded {file.Name} -> {localPath}");
+        }
+    }
+
+    public static async Task RunAsync(string bucketName, string parentPrefix, string localDir)
+    {
+        var storageClient = await StorageClient.CreateAsync();
+
+        var latestFolder = await GetLatestVersionFolderAsync(storageClient, bucketName, parentPrefix);
+        Console.WriteLine($"Latest version folder: {latestFolder}");
+
+        await DownloadFolderAsync(storageClient, bucketName, latestFolder, localDir);
+    }
+}
+---------------
+using System;
+using System.IO;
+using System.Threading.Tasks;
+using Google.Cloud.Storage.V1;
+
+public class GcsDownloader
+{
+    private readonly StorageClient _storageClient = StorageClient.Create();
+
+    public async Task DownloadActiveVersionFilesAsync(string bucketName, string localDownloadRootDir)
+    {
+        string relevantPrefix = "deployments/"; 
+
+        // 1. (Same as before) Find the active version folder path
+        var listOptions = new ListObjectsOptions
+        {
+            Delimiter = "/",
+            Fields = "prefixes,nextPageToken"
+        };
+
+        var response = _storageClient.ListObjectsAsync(bucketName, relevantPrefix, listOptions);
+        var versionFolders = new List<string>();
+        await foreach (var page in response.AsRawResponses())
+        {
+            if (page.Prefixes != null)
+            {
+                versionFolders.AddRange(page.Prefixes);
+            }
+        }
+
+        string activePath = GetLatestVersionPath(versionFolders);
+        if (string.IsNullOrEmpty(activePath))
+        {
+            Console.WriteLine("No active version found to download.");
+            return;
+        }
+
+        Console.WriteLine($"Downloading files from active path: '{activePath}'");
+
+        // 2. Fetch the metadata list of all files inside that active path
+        var fileOptions = new ListObjectsOptions
+        {
+            Fields = "items(name),nextPageToken"
+        };
+
+        var files = _storageClient.ListObjectsAsync(bucketName, activePath, fileOptions);
+
+        // 3. Loop through and download each file
+        await foreach (var file in files)
+        {
+            // Skip directory placeholders
+            if (file.Name == activePath || file.Name.EndsWith("/")) continue;
+
+            // Determine where the file should live locally
+            // e.g., converts "deployments/v12/subfolder/app.dll" to "subfolder/app.dll"
+            string relativePath = file.Name.Substring(activePath.Length);
+            string localFilePath = Path.Combine(localDownloadRootDir, relativePath);
+
+            // Ensure the local folder structure exists
+            string? localFileDir = Path.GetDirectoryName(localFilePath);
+            if (!string.IsNullOrEmpty(localFileDir))
+            {
+                Directory.CreateDirectory(localFileDir);
+            }
+
+            Console.WriteLine($"Downloading: {file.Name} -> {localFilePath}");
+
+            // 4. Download the file asynchronously
+            using (var localFileStream = File.OpenWrite(localFilePath))
+            {
+                await _storageClient.DownloadObjectAsync(
+                    bucketName, 
+                    file.Name, 
+                    localFileStream
+                );
+            }
+        }
+
+        Console.WriteLine("Download complete!");
+    }
+
+    private string GetLatestVersionPath(IEnumerable<string> paths)
+    {
+        var versionRegex = new System.Text.RegularExpressions.Regex(@"deployments/v(\d+)/$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return paths
+            .Select(p => new { Path = p, Match = versionRegex.Match(p) })
+            .Where(x => x.Match.Success)
+            .Select(x => new { x.Path, VersionNumber = int.Parse(x.Match.Groups[1].Value) })
+            .OrderByDescending(x => x.VersionNumber)
+            .Select(x => x.Path)
+            .FirstOrDefault();
+    }
+}
