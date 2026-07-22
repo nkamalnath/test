@@ -181,3 +181,69 @@ public class GcsDownloader
             .FirstOrDefault();
     }
 }
+Option 1 – Detailed Step-by-Step (Recommended)
+
+Test Steps
+
+Open E:\Service\appsettings.json.
+Update the MonitoredEmployees section with the provided configuration to trigger the job every 5 minutes.
+Restart the service.
+Wait approximately 5 minutes for the scheduled job to execute.
+Review the service logs and verify that no errors are reported.
+Navigate to the download folder and confirm that the previous day's alert file has been downloaded by verifying the date in the filename.
+Restore the original MonitoredEmployees configuration in appsettings.json.
+Restart the service.
+Update the Alert section with the provided configuration to trigger the job every 5 minutes.
+Restart the service.
+Wait approximately 5 minutes for the scheduled job to execute.
+Review the service logs and verify that no errors are reported.
+Verify that the report has been downloaded to R:\alerts.
+Set lookbackDays to 30.
+Since the corresponding Behavox report is scheduled to run monthly, multiple files may be downloaded. This is expected behavior.
+Restore the original configuration in appsettings.json.
+Restart the service.
+
+Expected Results
+
+Both scheduled jobs execute successfully.
+No errors are present in the service logs.
+The previous day's alert file is downloaded during the MonitoredEmployees test.
+Report files are downloaded to R:\alerts during the Alert test.
+Multiple downloaded files are expected when lookbackDays is set to 30.
+Option 2 – Concise Jira Instructions
+
+Test Procedure
+
+Update the MonitoredEmployees configuration in E:\Service\appsettings.json to run every 5 minutes.
+Restart the service.
+Wait 5 minutes and verify the logs contain no errors.
+Confirm the previous day's alert file has been downloaded by checking the date in the filename.
+Restore the original configuration and restart the service.
+Update the Alert configuration to run every 5 minutes.
+Restart the service.
+Wait 5 minutes and verify the logs contain no errors.
+Set lookbackDays = 30 and confirm report files are downloaded to R:\alerts.
+Multiple downloaded files are expected because the Behavox report runs monthly.
+Restore the original configuration and restart the service.
+Option 3 – QA Validation Format
+
+Precondition
+
+Service is installed and running.
+Original appsettings.json is available for restoration.
+
+Validation
+
+Modify the MonitoredEmployees schedule to run every 5 minutes.
+Restart the service.
+Verify the job executes after 5 minutes.
+Verify no errors are logged.
+Confirm the previous day's alert file is downloaded.
+Restore the original configuration.
+Modify the Alert schedule to run every 5 minutes with lookbackDays = 30.
+Restart the service.
+Verify the job executes successfully.
+Verify no errors are logged.
+Confirm files are downloaded to R:\alerts.
+Verify that downloading multiple files is expected for the monthly Behavox report.
+Restore the original configuration and restart the service.
