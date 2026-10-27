@@ -1,1 +1,66 @@
-test
+using Kentico.Content.Web.Mvc;
+using CMS.Websites;
+
+foreach (var item in apiResult.list)
+{
+    var parameters = new RetrievePagesOfContentTypesParameters
+    {
+        ChannelName = item.sys_site,        // was .OnSite(item.sys_site)
+        LanguageName = item.sys_culture     // was .Culture(item.sys_culture)
+    };
+
+    // One query replaces pageRetriever.Retrieve(...) AND every DocumentHelper.GetDocuments<...>() call
+    var pages = await contentRetriever.RetrievePagesOfContentTypes<IWebPageFieldsSource>(
+        [item.classname],
+        parameters,
+        query => query.Where(where => where.WhereEquals(
+            nameof(IWebPageFieldsSource.SystemFields.WebPageItemGUID), item.webpageitemguid)));
+        // Add a unique cache suffix via the cache settings overload (include GUID + language + channel)
+
+    var page = pages.FirstOrDefault();
+    if (page == null) continue;
+
+    var pageUrl = page.GetUrl().RelativePath;   // replaces DocumentURLProvider.GetUrl(mypage)
+    var result = new SearchResultViewModel();
+
+    switch (page)
+    {
+        case NewsArticle news:
+            result.dateOriginal = news.Date;
+            result.date = news.Date.ToString("MMM dd, yyyy");
+            result.IsExternalUrl = news.IsExternalUrl;
+            result.url = string.IsNullOrEmpty(news.LinkOverride) ? pageUrl : news.LinkOverride;
+            result.title = news.Title;
+            break;
+
+        case Videos video:
+            result.dateOriginal = video.Date;
+            result.date = video.Date.ToString("MMM dd, yyyy");
+            result.IsExternalUrl = video.IsExternalUrl;
+            result.url = string.IsNullOrEmpty(video.LinkOverride) ? pageUrl : video.LinkOverride;
+            result.title = video.Title;
+            break;
+
+        case HomeSection home:
+            var published = home.SystemFields.ContentItemCommonDataLastPublishedWhen; // was DocumentLastPublished
+            result.dateOriginal = published.Date;
+            result.date = published.ToString("MMM dd, yyyy");
+            result.title = home.SystemFields.ContentItemLanguageMetadataDisplayName;    // was DocumentName
+            result.IsExternalUrl = home.IsExternalUrl;
+            result.url = home.LinkUrl;
+            break;
+
+        default:
+            var pub = page.SystemFields.ContentItemCommonDataLastPublishedWhen;
+            result.dateOriginal = pub.Date;
+            result.date = pub.ToString("MMM dd, yyyy");
+            result.title = page.SystemFields.ContentItemLanguageMetadataDisplayName;
+            result.IsExternalUrl = false;
+            result.url = pageUrl;
+            break;
+    }
+
+    result.content = item.sys_content;
+    result.brief = GetBrief(result.content ?? "", data);
+    searchList.Add(result);
+}
