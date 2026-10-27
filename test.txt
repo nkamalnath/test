@@ -64,3 +64,28 @@ foreach (var item in apiResult.list)
     result.brief = GetBrief(result.content ?? "", data);
     searchList.Add(result);
 }
+
+
+using CMS.DataEngine;
+using CMS.Helpers;
+
+public class ContentTypeNameResolver(
+    IInfoProvider<DataClassInfo> classProvider,
+    IProgressiveCache cache)
+{
+    public Task<Dictionary<string, string>> GetWebsiteContentTypeNamesAsync() =>
+        cache.LoadAsync(async cs =>
+        {
+            var names = classProvider.Get()
+                .WhereEquals(nameof(DataClassInfo.ClassContentTypeType), "Website") // page content types only
+                .Column(nameof(DataClassInfo.ClassName))
+                .GetListResult<string>();
+
+            // Clear the cache automatically when content types change
+            cs.GetCacheDependency = () =>
+                CacheHelper.GetCacheDependency($"{DataClassInfo.OBJECT_TYPE}|all");
+
+            return names.ToDictionary(n => n, n => n, StringComparer.OrdinalIgnoreCase);
+        },
+        new CacheSettings(cacheMinutes: 60, "WebsiteContentTypeNames"));
+}
